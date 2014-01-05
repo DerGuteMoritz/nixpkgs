@@ -29,6 +29,7 @@ buildLispPackage rec {
       fi;
 
       mv $out/lib/common-lisp/stumpwm/contrib/stumpish $out/bin/stumpish
+      find $out/lib/common-lisp/stumpwm/ -not -name \*.lisp -not -name \*.asd -delete || true
       wrapProgram "$out"/bin/stumpish --prefix PATH : "${xlibs.xprop}/bin:${coreutils}/bin:${gnugrep}/bin:${gnused}/bin:${rlwrap}/bin:${ncurses}/bin"
     '';
     postInstall = ''false'';
