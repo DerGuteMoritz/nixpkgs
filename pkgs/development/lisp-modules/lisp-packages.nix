@@ -3,12 +3,13 @@ let lispPackages = rec {
   inherit pkgs clwrapper stdenv;
   nixLib = pkgs.lib;
   callPackage = nixLib.callPackageWith lispPackages;
+  openssl_lib_marked = import ./openssl-lib-marked.nix;
 
   buildLispPackage =  callPackage ./define-package.nix;
 
   quicklisp = buildLispPackage rec {
     baseName = "quicklisp";
-    version = "2017-03-06";
+    version = "2019-12-27";
 
     buildSystems = [];
 
@@ -24,8 +25,8 @@ let lispPackages = rec {
       quicklispdist = pkgs.fetchurl {
         # Will usually be replaced with a fresh version anyway, but needs to be
         # a valid distinfo.txt
-        url = "https://beta.quicklisp.org/dist/quicklisp/2019-07-11/distinfo.txt";
-        sha256 = "0r7ga5gkiy6va1v7a01fnj1yp97pifl9v8fnqpvbiv33dwdvbx2w";
+        url = "https://beta.quicklisp.org/dist/quicklisp/2019-12-27/distinfo.txt";
+        sha256 = "0fz0k7ydmddxvxyid0nkifap21n6bxap602qhqsac2dxglv3i4cs";
       };
       buildPhase = '' true; '';
       postInstall = ''
@@ -40,9 +41,9 @@ let lispPackages = rec {
     pname = "quicklisp-to-nix-system-info";
     version = "1.0.0";
     src = ./quicklisp-to-nix;
-    nativeBuildInputs = [sbcl];
+    nativeBuildInputs = [sbcl pkgs.makeWrapper];
     buildInputs = [
-      lispPackages.quicklisp coreutils
+      lispPackages.quicklisp coreutils stdenv
     ];
     touch = coreutils;
     nix-prefetch-url = nix;
@@ -50,9 +51,14 @@ let lispPackages = rec {
     buildPhase = ''
       ${sbcl}/bin/sbcl --eval '(load #P"${asdf}/lib/common-lisp/asdf/build/asdf.lisp")' --load $src/system-info.lisp --eval '(ql-to-nix-system-info::dump-image)'
     '';
+    LD_LIBRARY_PATH = with pkgs; "${glibc}/lib:${openssl.out}/lib:${fuse}/lib:${libuv}/lib:${libev}/lib:${libmysqlclient}/lib:${libmysqlclient}/lib/mysql:${postgresql.lib}/lib:${sqlite.out}/lib:${libfixposix}/lib:${freetds}/lib:${openssl_lib_marked}/lib";
+    CPATH = with pkgs; "${libuv}/include:${fuse}/include:${libfixposix}/include";
     installPhase = ''
       mkdir -p $out/bin
       cp quicklisp-to-nix-system-info $out/bin
+      wrapProgram $out/bin/quicklisp-to-nix-system-info \
+        --set LD_LIBRARY_PATH "$LD_LIBRARY_PATH" \
+        --set CPATH "$CPATH"
     '';
     dontStrip = true;
   };
